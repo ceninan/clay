@@ -843,11 +843,11 @@ overload lesser?(x:SI, y:SJ) = x.value == y.value;
 overload Int64(x:StaticIntValue)  = x.value;
 overload Int64(x:StaticUIntValue) = Int64(x.value);
 
-// work around oldclay compiler bug.
+// oldclay compiler bug.
 // for some reason it refuses to see a UInt64(StaticIntValue) overload
-toUInt64(x) = UInt64(x);
-overload toUInt64(x:StaticIntValue)  = UInt64(x.value);
-overload toUInt64(x:StaticUIntValue) = x.value;
+/*toUInt64(x) = UInt64(x);*/
+overload /*to*/UInt64(x:StaticIntValue)  = UInt64(x.value);
+overload /*to*/UInt64(x:StaticUIntValue) = x.value;
 
 private StaticIntValueArgs?(I, J)
     = VariantMember?(IntValue, I)
@@ -862,7 +862,7 @@ overload StaticIntResultType(static I, static StaticUIntValue) = StaticUIntValue
 
 private StaticIntValueType(I, J) = Int64;
 [I, J | inValues?(StaticUIntValue, I, J)]
-overload StaticIntValueType(static I, static J) = toUInt64;
+overload StaticIntValueType(static I, static J) = /*to*/UInt64;
 
 [I, J | StaticIntValueArgs?(I, J)]
 private staticIntMath(fn, x:I, y:J) {
