@@ -718,39 +718,39 @@ record ContinueStatement = ast(
 
 record IfStatement = ast(
     condition: Expr,
-    thenBody: Statement,
-    elseBody: Maybe[Statement],
+    thenBody: Block,
+    elseBody: Maybe[Block],
 );
 
 record ForStatement = ast(
     label: Maybe[LabelDef],
     bodyBindings: ArgumentList,
     sequenceValue: Expr,
-    body: Statement,
+    body: Block,
 );
 
 record StaticForStatement = ast(
     label: Maybe[LabelDef],
     bodyBinding: Identifier,
     values: ExprList,
-    body: Statement,
+    body: Block,
 );
 
 record WhileStatement = ast(
     label: Maybe[LabelDef],
     condition: Expr,
-    body: Statement,
+    body: Block,
 );
 
 record SwitchStatement = ast(
     value: Expr,
     caseBlocks: Vector[CaseBlock],
-    defaultBlock: Maybe[Statement],
+    defaultBlock: Maybe[Block],
 );
 
 record CaseBlock = ast(
     values: ExprList,
-    body: Statement,
+    body: Block,
 );
 
 record TryStatement = ast(

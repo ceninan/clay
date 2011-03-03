@@ -1,101 +1,100 @@
-foo() {
-    x[y, z];
-    x(y, z);
-    x^;
-    x.y;
-    x.222;
-    x.2_222;
-    x.0.1.2;
+foo():
+    x[y, z]
+    x(y, z)
+    x^
+    x.y
+    x.222
+    x.2_222
+    x.0.1.2
 
-    x[y, z]^;
-    x[y, z](w, v)^;
-    x[y, z]^(w, v)^;
+    x[y, z]^
+    x[y, z](w, v)^
+    x[y, z]^(w, v)^
 
-    &x;
-    &x.y;
-    +x;
-    -x;
-    *x;
+    &x
+    &x.y
+    +x
+    -x
+    *x
 
-    #x;
-    #-x;
-    #1;
-    #"two";
-    #x.y;
-    #x(y);
+    #x
+    #-x
+    #1
+    #"two"
+    #x.y
+    #x(y)
 
-    &x[y, z]^(w, v)^;
+    &x[y, z]^(w, v)^
 
-    a * b;
-    a / b;
-    a div b;
-    a mod b;
+    a * b
+    a / b
+    a div b
+    a mod b
 
-    -a * b[c];
-    a[b] * -c;
+    -a * b[c]
+    a[b] * -c
 
-    a + b;
-    a - b;
+    a + b
+    a - b
 
-    a * b + c / d;
+    a * b + c / d
 
-    a < b;
-    a <= b;
-    a >= b;
-    a > b;
+    a < b
+    a <= b
+    a >= b
+    a > b
 
-    a + b < c - d;
-    a + b <= c - d;
-    a + b >= c - d;
-    a + b > c - d;
+    a + b < c - d
+    a + b <= c - d
+    a + b >= c - d
+    a + b > c - d
 
-    a == b;
-    a != b;
+    a == b
+    a != b
 
-    a < b != a > b;
-    a <= b == a >= b;
+    a < b != a > b
+    a <= b == a >= b
 
-    not a;
+    not a
 
-    not &a[b]^;
-    not a == b;
-    not a != b;
+    not &a[b]^
+    not a == b
+    not a != b
 
-    a and b;
-    not a and b;
-    a and not b;
+    a and b
+    not a and b
+    a and not b
 
-    a or b;
-    not a and b or c and not d;
+    a or b
+    not a and b or c and not d
 
-    x -> y;
-    (x, y) -> z;
+    x -> y
+    (x, y) -> z
 
-    x -> ..(y, z);
+    x -> ..(y, z)
 
-    x -> a or b;
+    x -> a or b
 
-    x -> { a; };
+    x -> { a }
 
-    if (a) b else c;
-    if (a) b or c else d or e;
-    if (a) b -> c or d else e -> f or g;
+    if a then b else c
+    if a then b or c else d or e
+    if a then b -> c or d else e -> f or g
 
-    throw a;
+    throw a
 
-    if (a) throw b else throw c;
+    if a then throw b else throw c
 
-    x = y;
-    x <-- y;
-    x += y;
-    x -= y;
-    x *= y;
-    x /= y;
-    x div= y;
-    x mod= y;
+    x = y
+    x <-- y
+    x += y
+    x -= y
+    x *= y
+    x /= y
+    x div= y
+    x mod= y
 
-    (foo: "bar");
-    (foo: if (a) b else c);
+    (foo: "bar")
+    (foo: if a then b else c)
 
-    label: (pair: "value");
-}
+    label: (pair: "value")

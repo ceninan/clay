@@ -1,13 +1,12 @@
-main() {
-    (a); // not tuple!
-    (a,);
-    (a, b);
-    (a, b,);
-    (..a);
+main():
+    (a) // not tuple!
+    (a,)
+    (a, b)
+    (a, b,)
+    (..a)
 
-    [a]; // is array!
-    [a,];
-    [a, b];
-    [a, b,];
-    [..a];
-}
+    [a] // is array!
+    [a,]
+    [a, b]
+    [a, b,]
+    [..a]

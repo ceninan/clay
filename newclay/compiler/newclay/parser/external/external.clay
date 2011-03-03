@@ -100,6 +100,7 @@ private var kw_alias = keyword("alias");
 private var kw_true = keyword("true");
 private var kw_false = keyword("false");
 private var kw_if = keyword("if");
+private var kw_then = keyword("then");
 private var kw_else = keyword("else");
 private var kw_and = keyword("and");
 private var kw_or = keyword("or");
@@ -147,6 +148,11 @@ private var ellipsis = choice(punc(#"..."), punc(#".."));
 //
 // utility combinators
 //
+
+private statementList(forward parser)
+    = separatedList(oneOrMore(endStatement), parser);
+private optStatementList(forward parser)
+    = optSeparatedList(oneOrMore(endStatement), parser);
 
 private commaList(forward parser) = separatedList(punc(#","), parser);
 private optCommaList(forward parser) = optSeparatedList(punc(#","), parser);
@@ -206,6 +212,9 @@ private tokenData(tokenKind) {
     };
 }
 
+private var endStatement = token(END_STATEMENT);
+private var openBlock = token(OPEN_BLOCK);
+private var closeBlock = token(CLOSE_BLOCK);
 
 
 //
@@ -585,8 +594,8 @@ private var lambdaExpr = exprParser(
 //
 
 private var ifExpr = exprParser(
-    x => IfExpr(move(x.2), move(x.4), move(x.6)),
-    sequence(kw_if, punc(#"("), expr, punc(#")"), expr, kw_else, expr),
+    x => IfExpr(move(x.1), move(x.3), move(x.5)),
+    sequence(kw_if, expr, kw_then, expr, kw_else, expr),
 );
 
 
@@ -811,15 +820,15 @@ private importSpecParser(forward modifier, forward parser) = modify(
 
 private var qualifiedImportSpec = importSpecParser(
     x => QualifiedImportSpec(),
-    punc(#";")
+    input => Maybe(()),
 );
 private var generalImportSpec = importSpecParser(
     x => GeneralImportSpec(),
-    sequence(punc(#"."), punc(#"*"), punc(#";"))
+    sequence(punc(#"."), punc(#"*")),
 );
 private var aliasedImportSpec = importSpecParser(
     x => AliasedImportSpec(x.1),
-    sequence(kw_as, identifier, punc(#";"))
+    sequence(kw_as, identifier),
 );
 private var specificImportSpec = bounds(modify(
     x => SpecificImportSpec(just(x.0, VIS_PUBLIC), x.1, x.2),
@@ -827,13 +836,13 @@ private var specificImportSpec = bounds(modify(
 ));
 private var specificImportSpecList = modify(
     x => ImportSpec(x.2),
-    sequence(punc(#"."), punc(#"("), optCommaList(specificImportSpec), punc(#")"), punc(#";")),
+    sequence(punc(#"."), punc(#"("), optCommaList(specificImportSpec), punc(#")")),
 );
 private var importSpec = choice(
-    qualifiedImportSpec,
     generalImportSpec,
     aliasedImportSpec,
     specificImportSpecList,
+    qualifiedImportSpec,
 );
 
 private var importDef = topLevelItemParser(
@@ -862,7 +871,7 @@ private var symbolDef = topLevelItemParser(
     x => Symbol(just(x.0, VIS_PUBLIC), move(x.2), move(x.3)),
     sequence(
         visibility, kw_symbol, symbolName,
-        optional(symbolExprList), punc(#";")
+        optional(symbolExprList),
     ),
 );
 
@@ -882,7 +891,7 @@ private var attributeDef = topLevelItemParser(
     x => Attribute(move(x.1), move(x.2), move(x.4)),
     sequence(
         kw_attribute, targetPattern, optPredicate,
-        punc(#"="), expr, punc(#";"),
+        punc(#"="), expr,
     ),
 );
 
@@ -895,7 +904,7 @@ private var staticArguments = modify(
 
 private var staticOverloadDefinition = modify(
     x => StaticOverloadDefinition(move(x.0), move(x.1), move(x.3)),
-    sequence(staticArguments, optPredicate, punc(#"="), optExprList, punc(#";")),
+    sequence(staticArguments, optPredicate, punc(#"="), optExprList),
 );
 
 private var staticOverloadDef = topLevelItemParser(
@@ -1063,7 +1072,7 @@ private var optReturnExprList = modify(
 
 private var exprCodeBody = modify(CodeBody, bounds(modify(
     x => ExprCodeBody(move(x.1)),
-    sequence(punc(#"="), optReturnExprList, punc(#";")),
+    sequence(punc(#"="), optReturnExprList),
 )));
 
 private var literalCodeBodyKind = choice(
@@ -1076,12 +1085,15 @@ private var literalCodeBodyProcedure = modify(CodeBody, literalCodeBody);
 
 private var literalCodeBody = bounds(modify(
     x => LiteralCodeBody(x.0, String(x.1)),
-    sequence(literalCodeBodyKind, tokenData(LITERAL_CODE), punc(#";")),
+    sequence(literalCodeBodyKind, tokenData(LITERAL_CODE)),
 ));
 
 private var blockCodeBody = modify(CodeBody, bounds(block));
 
-private var undefinedCodeBody = modify(x => CodeBody(UndefinedCodeBody()), punc(#";"));
+private var undefinedCodeBody = modify(
+    x => CodeBody(UndefinedCodeBody()),
+    input => Maybe(()),
+);
 
 private var codeBody = choice(
     exprCodeBody, blockCodeBody, literalCodeBodyProcedure, undefinedCodeBody
@@ -1154,7 +1166,7 @@ private var externalArgument = bounds(modify(
 
 private var globalBinding = topLevelItemParser(
     x => GlobalBinding(just(x.0, VIS_PUBLIC), x.1, x.2),
-    sequence(visibility, bindingKind, commaList(singleGlobalBinding), punc(#";"))
+    sequence(visibility, bindingKind, commaList(singleGlobalBinding))
 );
 
 private var singleGlobalBinding = modify(
@@ -1184,7 +1196,7 @@ private var labelDef = bounds(modify(
 
 private var block2 = bounds(modify(
     x => Block(x.0, x.2),
-    sequence(optional(labelDef), punc(#"{"), zeroOrMore(statement), punc(#"}")),
+    sequence(optional(labelDef), openBlock, optStatementList(statement), closeBlock),
 ));
 
 private block(input) Maybe[Block] = block2(input);
@@ -1216,7 +1228,7 @@ private var blockStatement = statementParser(x => x, block);
 
 private var bindingStatement = statementParser(
     x => BindingStatement(x.0, x.1),
-    sequence(bindingKind, bindingList, punc(#";"))
+    sequence(bindingKind, bindingList)
 );
 
 private var bindingKind = choice(
@@ -1275,60 +1287,61 @@ private var assignmentOp = choice(
 
 private var assignmentStatement = statementParser(
     x => AssignmentStatement(x.1, x.0, x.2),
-    sequence(exprList, assignmentOp, exprList, punc(#";")),
+    sequence(exprList, assignmentOp, exprList),
 );
 
 private var returnStatement = statementParser(
     x => ReturnStatement(x.1),
-    sequence(kw_return, optReturnExprList, punc(#";")),
+    sequence(kw_return, optReturnExprList),
 );
 
 private var breakStatement = statementParser(
     x => BreakStatement(x.1),
-    sequence(kw_break, optional(identifier), punc(#";")),
+    sequence(kw_break, optional(identifier)),
 );
 
 private var continueStatement = statementParser(
     x => ContinueStatement(x.1),
-    sequence(kw_continue, optional(identifier), punc(#";")),
+    sequence(kw_continue, optional(identifier)),
 );
 
 private var elseBlock = modify(
-    x => x.1,
-    sequence(kw_else, statement),
+    x => Block(nothing(LabelDef), Vector[Statement](x.2)),
+    sequence(optional(endStatement), kw_else, statement),
 );
 
 private var ifStatement = statementParser(
-    x => IfStatement(x.2, x.4, x.5),
-    sequence(kw_if, punc(#"("), expr, punc(#")"), statement, optional(elseBlock)),
+    x => IfStatement(x.1, x.2, x.3),
+    sequence(kw_if, expr, block, optional(elseBlock)),
 );
 
 private var forStatement = statementParser(
-    x => ForStatement(x.0, x.3, x.5, x.7),
-    sequence(optional(labelDef), kw_for, punc(#"("), arguments, kw_in, expr, punc(#")"), statement),
+    x => ForStatement(x.0, x.2, x.4, x.5),
+    sequence(optional(labelDef), kw_for, arguments, kw_in, expr, block),
 );
 
 private var staticForStatement = statementParser(
-    x => StaticForStatement(x.0, x.4, x.6, x.8),
-    sequence(optional(labelDef), kw_static, kw_for, punc(#"("), identifier, kw_in, exprList, punc(#")"), statement),
+    x => StaticForStatement(x.0, x.3, x.5, x.6),
+    sequence(optional(labelDef), kw_static, kw_for, identifier, kw_in, exprList, block),
 );
 
 private var whileStatement = statementParser(
-    x => WhileStatement(x.0, x.3, x.5),
-    sequence(optional(labelDef), kw_while, punc(#"("), expr, punc(#")"), statement),
+    x => WhileStatement(x.0, x.2, x.3),
+    sequence(optional(labelDef), kw_while, expr, block),
 );
 
 private var switchStatement = statementParser(
-    x => SwitchStatement(x.2, x.4, x.5),
-    sequence(kw_switch, punc(#"("), expr, punc(#")"),
+    x => SwitchStatement(x.1, x.3, x.4),
+    sequence(kw_switch, expr, openBlock,
         oneOrMore(caseBlock),
         optional(elseBlock),
+        optional(endStatement), closeBlock,
     ),
 );
 
 private var caseBlock = bounds(modify(
-    x => CaseBlock(x.2, x.4),
-    sequence(kw_case, punc(#"("), exprList, punc(#")"), statement),
+    x => CaseBlock(x.2, x.3),
+    sequence(optional(endStatement), kw_case, exprList, block),
 ));
 
 private var tryStatement = statementParser(
@@ -1337,14 +1350,11 @@ private var tryStatement = statementParser(
 );
 
 private var catchBlock = bounds(modify(
-    x => CatchBlock(x.2, x.4),
-    sequence(kw_catch, punc(#"("), bindingName, punc(#")"), block),
+    x => CatchBlock(x.2, x.3),
+    sequence(optional(endStatement), kw_catch, bindingName, block),
 ));
 
-private var exprStatement = statementParser(
-    x => ExprStatement(x.0),
-    sequence(expr, punc(#";")),
-);
+private var exprStatement = statementParser(ExprStatement, expr);
 
 // topLevelItem
 
@@ -1383,7 +1393,7 @@ external parser_parseExpr(
 
 private var parse2 = modify(
     x => SourceAST(SourceTokens(), move(x.0)),
-    sequence(zeroOrMore(topLevelItem), token(SENTINEL)),
+    sequence(optStatementList(topLevelItem), token(SENTINEL)),
 );
 
 private impl_parse(tokens:SourceTokens) {

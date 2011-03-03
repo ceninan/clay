@@ -1,8 +1,8 @@
-symbol Foo = ();
-symbol Foo = Bar.Bas;
+symbol Foo = ()
+symbol Foo = Bar.Bas
 
-attribute Foo.Bar = Zim.Zang;
+attribute Foo.Bar = Zim.Zang
 
-overload #Foo.Bar(Zim.Zang) = Zung.Zippity;
+overload #Foo.Bar(Zim.Zang) = Zung.Zippity
 
-overload Foo.Bar(bas:Zim.Zang) = Zung.Zippity;
+overload Foo.Bar(bas:Zim.Zang) = Zung.Zippity

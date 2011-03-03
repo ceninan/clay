@@ -81,7 +81,7 @@ var keywords = [
     "overload", "static",
     "var", "const", "ref", "rvalue", "forward", "alias",
     "true", "false",
-    "if", "else",
+    "if", "then", "else",
     "and", "or", "not",
     "public", "private",
     "return", "break", "continue",
