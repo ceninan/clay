@@ -132,6 +132,15 @@ procedure popFront;
 // defined for statically sized sequences like Array[T,n]
 procedure StaticSize;
 
+[S | SizedSequence?(S) and CallDefined?(begin, S)]
+overload front(seq:S) = ref begin(seq)^;
+
+[S | SizedSequence?(S) and CallDefined?(end, S)]
+overload back(seq:S) {
+    var i = end(seq);
+    dec(i);
+    return ref i^;
+}
 
 
 //
