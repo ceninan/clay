@@ -1,0 +1,23 @@
+statement 1
+statement 2; statement 3
+statement:(
+    4
+)
+
+block 1:
+    { block 2 }
+    statement 5
+    block 3:
+        statement 6
+        statement 7
+    block 4:
+        statement 8
+        statement:9
+
+block
+    5:
+    statement 10
+
+statement 11;
+  statement 12
+statement 13

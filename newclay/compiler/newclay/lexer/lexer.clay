@@ -24,6 +24,10 @@ enum TokenKind {
     LITERAL_CODE,
     SPACE,
     COMMENT,
+    INDENTATION,
+    OPEN_BLOCK,
+    CLOSE_BLOCK,
+    END_STATEMENT,
 }
 
 alias DataRange = Range[SizeT];
@@ -161,6 +165,16 @@ overload displayError(e:LexerError) {
     errorWithLocation(e.file, e.where, "invalid token");
 }
 
+record LexerTabIndentationError(
+    file: SourceFile,
+    where: SizeT
+);
+
+instance ClayError = LexerTabIndentationError;
+
+overload displayError(e:LexerTabIndentationError) {
+    errorWithLocation(e.file, e.where, "tab characters are not allowed as indentation");
+}
 
 
 //

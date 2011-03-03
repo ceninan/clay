@@ -63,6 +63,7 @@ private bounds(parser:Parser) {
         var start = input.current;
         return maybe(parser(input),
             x ref=> {
+                observe(#bounds, start, input.current);
                 x.range = DataRange(start, input.current);
                 return Maybe(x);
             },
@@ -294,13 +295,7 @@ private var lexLiteralCode = modify(
 // space
 //
 
-private space?(c) {
-    for (x in " \t\n\r\f\v") {
-        if (c == x)
-            return true;
-    }
-    return false;
-}
+private space?(c) = inValues?(c, ' ', '\t');
 
 private var lexSpace = modify(
     x => Token(SPACE),
@@ -317,7 +312,7 @@ private var notNewline = condition(c => (c != '\n'));
 
 private var lexLineComment = modify(
     x => Token(COMMENT),
-    seq("//", zeroPlus(notNewline), optional('\n')),
+    seq("//", zeroPlus(notNewline)),
 );
 
 private blockCommentTail(input) {
@@ -344,8 +339,7 @@ private var lexBlockComment = modify(
 // lex one token
 //
 
-private var lexToken = bounds(choice(
-    lexSpace,
+private var _lexNonspaceToken = choice(
     lexLineComment,
     lexBlockComment,
     lexCharLiteral,
@@ -356,40 +350,201 @@ private var lexToken = bounds(choice(
     lexLiteralCode,
     lexIdentifierOrKeyword,
     lexStringLiteral,
+);
+
+private var lexNonspaceToken = bounds(_lexNonspaceToken);
+
+private var lexToken = bounds(choice(
+    lexSpace,
+    _lexNonspaceToken,
 ));
+
+
+//
+// lex one line
+//
+
+private record TokensLine (
+    indentation:SizeT,
+    tokens:Vector[Token],
+    endOfLine:Token,
+);
+
+private var lexIndentation = bounds(modify(
+    x => Token(INDENTATION),
+    zeroOrMore(' '),
+));
+
+private var lexLineTokens = modify(
+    x => {
+        var v = Vector[Token](x.0);
+        push(v, move(x.1));
+        return move(v);
+    },
+    sequence(lexNonspaceToken, zeroOrMore(lexToken)),
+);
+
+private var lexEndOfLine = bounds(modify(
+    x => Token(SPACE),
+    oneOrMore(choice('\n', '\r', '\f', '\v')),
+));
+
+private var lexSentinel = bounds(input => Maybe(Token(SENTINEL)));
+
+private var lexLine = modify(
+    x => TokensLine(size(x.0 .range), just(x.1, Vector[Token]()), x.2),
+    sequence(
+        lexIndentation,
+        optional(lexLineTokens),
+        lexEndOfLine,
+    ),
+);
+
+private var lexFinalLine = modify(
+    x => TokensLine(size(x.0 .range), just(x.1, Vector[Token]()), x.2),
+    sequence(
+        lexIndentation,
+        optional(lexLineTokens),
+        lexSentinel,
+    ),
+);
 
 
 //
 // tokenize
 //
 
-private var lexSentinel = bounds(input => Maybe(Token(SENTINEL)));
-
-private var tokenize1 = modify(
+private var tokenizeLines2 = modify(
     x => {
-        var v = move(x.0);
-        push(v, move(x.1));
-        return move(v);
+        var lines = move(x.0);
+        push(lines, x.1);
+        return move(lines);
     },
-    sequence(zeroOrMore(lexToken), lexSentinel),
+    sequence(zeroOrMore(lexLine), lexFinalLine)
 );
 
-private tokenizeAll(file) {
+private tokenizeLines(file) {
     var input = LexerInput(file);
-    var tokensData = require(tokenize1(input));
+    var tokensLines = require(tokenizeLines2(input));
     if (input.current != size(file.data))
         throw LexerError(file, input.maxCurrent);
-    return SourceTokens(file, move(tokensData));
+    return move(tokensLines);
+}
+
+private record LayoutStatement (indentation:SizeT);
+private record LayoutBlock     (indentation:SizeT);
+private variant LayoutContext = LayoutStatement | LayoutBlock;
+
+private punctuation?(token, i) = token.kind == PUNCTUATION and token.subKind == i;
+
+private procedure closeLayout;
+overload closeLayout(c:LayoutStatement, line, tokens) {
+    var closeBrace = find(punctuations, "}") - begin(punctuations);
+    var closeParen = find(punctuations, ")") - begin(punctuations);
+    var closeBracket = find(punctuations, "]") - begin(punctuations);
+
+    // if shallower than statement, push end statement token and return true
+    if (line.indentation < c.indentation) {
+        push(tokens, Token(END_STATEMENT, 0_u8, line.endOfLine.range));
+        return true;
+    } else if (line.indentation == c.indentation and not empty?(line.tokens)) {
+        ref firstToken = line.tokens[0];
+        if (firstToken.kind == PUNCTUATION
+            and inValues?(firstToken.subKind, closeBrace, closeParen, closeBracket))
+            return false;
+
+        push(tokens, Token(END_STATEMENT, 0_u8, line.endOfLine.range));
+        return true;
+    }
+    return false;
+}
+overload closeLayout(c:LayoutBlock, line, tokens) {
+    if (line.indentation <= c.indentation) {
+        push(tokens, Token(CLOSE_BLOCK, 0_u8, line.endOfLine.range));
+        return true;
+    }
+    return false;
+}
+
+private procedure endLayout;
+overload endLayout(c:LayoutStatement, endToken, tokens) {
+    push(tokens, Token(END_STATEMENT, 0_u8, endToken.range));
+}
+overload endLayout(c:LayoutBlock, endToken, tokens) {
+    push(tokens, Token(CLOSE_BLOCK, 0_u8, endToken.range));
+}
+
+private layoutTokens(lines:Vector[TokensLine]) {
+    var tokens = Vector[Token]();
+    var contextStack = Vector[LayoutContext]();
+
+    var colon = find(punctuations, ":") - begin(punctuations);
+    var semicolon = find(punctuations, ";") - begin(punctuations);
+    var openBrace = find(punctuations, "{") - begin(punctuations);
+    var closeBrace = find(punctuations, "}") - begin(punctuations);
+
+    for (line in lines) {
+        if (empty?(line.tokens))
+            continue;
+
+        assert(line.tokens[0].kind != SPACE, "line should not begin with non-indentation space");
+
+        var significantTokens = endTrimmed(
+            line.tokens,
+            t => inValues?(t.kind, SPACE, COMMENT)
+        );
+        if (empty?(significantTokens))
+            continue;
+
+        while (not empty?(contextStack)
+               and closeLayout(*back(contextStack), line, tokens))
+            pop(contextStack);
+
+        if (empty?(contextStack) or not variantIs?(back(contextStack), LayoutStatement))
+            push(contextStack, LayoutContext(LayoutStatement(line.indentation)));
+        var statementDepth = variantAs(back(contextStack), LayoutStatement).indentation;
+
+        var blockStart? = punctuation?(back(significantTokens), colon);
+        var lineTokens = slicedUpto(significantTokens,
+            size(significantTokens) - (if (blockStart?) 1 else 0)
+        );
+
+        for (token in lineTokens) {
+            if (inValues?(token.kind, SPACE, COMMENT))
+                continue;
+            if (token.kind == PUNCTUATION) {
+                if (token.subKind == semicolon)
+                    push(tokens, Token(END_STATEMENT, 0_u8, token.range));
+                else if (token.subKind == openBrace)
+                    push(tokens, Token(OPEN_BLOCK, 0_u8, token.range));
+                else if (token.subKind == closeBrace)
+                    push(tokens, Token(CLOSE_BLOCK, 0_u8, token.range));
+                else
+                    push(tokens, token);
+            } else
+                push(tokens, token);
+        }
+
+        if (blockStart?) {
+            push(tokens, Token(OPEN_BLOCK, 0_u8, back(significantTokens).range));
+            push(contextStack, LayoutContext(LayoutBlock(statementDepth)));
+        }
+    }
+
+    assert(back(lines).endOfLine.kind == SENTINEL, "no sentinel token at end of file");
+
+    for (context in reversed(contextStack))
+        endLayout(*context, back(lines).endOfLine, tokens);
+
+    push(tokens, back(lines).endOfLine);
+
+    return move(tokens);
 }
 
 private impl_tokenize(file:SourceFile) {
-    var tokens = tokenizeAll(file);
-    tokens.vector = Vector(filtered(
-        x => (x.kind != SPACE) and (x.kind != COMMENT),
-        tokens.vector,
-    ));
+    var lines = tokenizeLines(file);
 
-    return move(tokens);
+    return SourceTokens(file, layoutTokens(lines));
 }
 
 external lexer_tokenize(
