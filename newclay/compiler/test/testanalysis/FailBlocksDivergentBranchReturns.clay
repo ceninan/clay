@@ -1,8 +1,5 @@
-symbol main;
-overload main() {
-    if (true)
-        return true;
-    else
-        return 0;
-}
-
+main():
+    if true:
+        return true
+    else:
+        return 0

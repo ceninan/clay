@@ -1,5 +1,3 @@
-symbol main;
-overload main() {
-    if (true)
-        return 1;
-}
+main():
+    if true:
+        return 1

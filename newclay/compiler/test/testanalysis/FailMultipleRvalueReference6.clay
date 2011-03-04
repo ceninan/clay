@@ -1,6 +1,5 @@
 eatRvalue(rvalue x) {}
 
-main() {
-    rvalue x = false;
-    return x and x;
-}
+main():
+    rvalue x = false
+    return x and x

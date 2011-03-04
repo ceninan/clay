@@ -265,12 +265,11 @@ remainderAssign(ref a:Int, b:Int) { a <-- remainder(a, b); }
 // case?
 //
 
-case?(a, forward ..against) {
-    static for (b in ..against)
-        if (a == b)
-            return true;
-    return false;
-}
+case?(a, forward ..against):
+    static for b in ..against:
+        if a == b:
+            return true
+    return false
 
 // iterator, next, hasNext?
 

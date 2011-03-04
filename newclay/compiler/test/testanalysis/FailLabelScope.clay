@@ -1,4 +1,3 @@
-main() {
+main():
     foo: {}
-    break foo;
-}
+    break foo

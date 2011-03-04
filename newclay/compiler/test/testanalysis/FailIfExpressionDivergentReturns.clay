@@ -1,7 +1,4 @@
-symbol main;
-overload main() =
-    if (true)
-        true
-    else
-        0;
+main() = if true
+    then true
+    else 0
 
