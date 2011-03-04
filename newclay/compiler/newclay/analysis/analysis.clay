@@ -1138,14 +1138,14 @@ overload analyzeStatement(s, pc, bc, lc, stmt:ast.IfStatement)
             thenS ref=> analyzeStatement(
                 thenS,
                 pc,
-                BlockContext(newEnv(bc.env)),
+                bc,
                 lc,
                 stmt.thenBody
             ),
             elseS ref=> analyzeStatement(
                 elseS,
                 pc,
-                BlockContext(newEnv(bc.env)),
+                bc,
                 lc,
                 just(stmt.elseBody)
             ),
@@ -1341,7 +1341,7 @@ private analyzeCase(s, pc, bc, lc, testValue, stmt:ast.SwitchStatement, caseI:Si
                 caseS ref=> analyzeStatement(
                     caseS,
                     pc,
-                    BlockContext(newEnv(bc.env)),
+                    bc,
                     lc,
                     caseBlock.body
                 ),
